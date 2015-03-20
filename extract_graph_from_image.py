@@ -12,6 +12,7 @@ from sklearn.cluster import spectral_clustering
 
 import scipy.ndimage
 import networkx as nx
+import glob
 
 N_REGIONS = 16
 
@@ -33,6 +34,11 @@ def load_image(path):
     imagebw = imagebw[::2, ::2] + imagebw[1::2, ::2] + imagebw[::2, 1::2] + imagebw[1::2, 1::2]
     #imagebw = scipy.misc.imresize(image_bw_big,.25)
     imagec = scipy.misc.imresize(image_c_big,.25)
+    return imagebw, imagec
+
+def load_small_image(path):
+    imagebw = (sp.misc.imread(path, flatten=True)).astype(np.int64) * 16
+    imagec = (sp.misc.imread(path)).astype(np.int64)
     return imagebw, imagec
 
 def cluster(imagebw):
@@ -67,7 +73,7 @@ def create_connectivity_matrix(labels):
     connectivity = np.zeros((N_REGIONS,N_REGIONS))
     for i in range(N_REGIONS):
         for j in range(N_REGIONS):
-            connectivity[i,j] = np.count_nonzero(edges[i] & edges[j]) > 0
+            connectivity[i,j] = np.count_nonzero(edges[i] & edges[j])
     return connectivity
     
 def find_centroids(labels):
@@ -100,20 +106,58 @@ def show_plot(imagebw, labels, t):
     plt.title('Spectral clustering:  %.2fs' % (t))
     plt.show()
 
-
-def show_graph(labels, imagec):
-    plt.figure(figsize=(8,8))
+def process_labels(labels, imagec):
     connectivity = create_connectivity_matrix(labels)
-    G = nx.from_numpy_matrix(connectivity)
     centroids = find_centroids(labels)
     colors = find_colors(labels, imagec) / 255
     size = find_counts(labels)
+    return connectivity, centroids, colors, size
+
+def show_graph_from_labels(labels, imagec):
+    connectivity, centroids, colors, size = process_labels(labels, imagec)
+    show_graph(connectivity, centroids, colors, size)
+
+def show_graph(connectivity, centroids, colors, size):
+    plt.figure(figsize=(8,8))
+    G = nx.from_numpy_matrix(connectivity)
     nx.draw(G,  pos=centroids, node_color=colors, node_size=size)
     plt.show()
+    
+def show_processed_images():
+    graph_paths = glob.glob("graphs/*/*.npz")
+    for graph_path in graph_paths:
+        data = np.load(graph_path)
+        connectivity=data['connectivity']
+        centroids=data['centroids']
+        colors=data['colors']
+        size=data['size']
+        show_graph(connectivity, centroids, colors, size)
+    
+
+def process_images():
+    image_paths = glob.glob("tiny_set/*/*.jpg")
+    i = 0
+    for image_path in image_paths:
+        image_key = image_path.replace("tiny_set/","").replace(".jpg","")
+        imagebw, imagec = load_small_image(image_path)
+        labels, t = cluster(imagebw)
+        connectivity = create_connectivity_matrix(labels)
+        centroids = find_centroids(labels)
+        colors = find_colors(labels, imagec) / 255
+        size = find_counts(labels)
+        new_path_labels = "labels/"+image_key
+        new_path_graphs = "graphs/"+image_key
+        np.savez(new_path_labels, labels=labels)
+        np.savez(new_path_graphs, connectivity=connectivity, centroids=centroids, colors=colors, size=size)
+        print("Finished "+str(i))
+        i = i + 1
 
 if __name__ == "__main__":
-    imagebw, imagec = load_image("apple.jpg")
-    labels, t = cluster(imagebw)
+    #imagebw, imagec = load_image("apple.jpg")
+    #imagebw, imagec = load_small_image("tiny_set/beef_carpaccio/11466.jpg")
+    #labels, t = cluster(imagebw)
     #show_plot(imagebw, labels, t)
-    show_graph(labels, imagec)
+    #show_graph_from_labels(labels, imagec)
+    show_processed_images()
+    
     
