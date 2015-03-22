@@ -29,9 +29,9 @@ def load_image(path):
     # The color image can just use scipy.misc.imresize, but not the black and white one
     # if we resize the image it will map each block of 16 pixels to a pixel in the range 0-255 (2^0 -1 to 2^8 -1)
     # this method puts each pixel as 0-4096 (2^0 -1 to 2^12 -1)
-    imagebw = image_bw_big
-    imagebw = imagebw[::2, ::2] + imagebw[1::2, ::2] + imagebw[::2, 1::2] + imagebw[1::2, 1::2]
-    imagebw = imagebw[::2, ::2] + imagebw[1::2, ::2] + imagebw[::2, 1::2] + imagebw[1::2, 1::2]
+    imagebw = image_bw_big # The images from the reduced data set have already been downsized.
+    # imagebw = imagebw[::2, ::2] + imagebw[1::2, ::2] + imagebw[::2, 1::2] + imagebw[1::2, 1::2]
+    # imagebw = imagebw[::2, ::2] + imagebw[1::2, ::2] + imagebw[::2, 1::2] + imagebw[1::2, 1::2]
     #imagebw = scipy.misc.imresize(image_bw_big,.25)
     imagec = scipy.misc.imresize(image_c_big,.25)
     return imagebw, imagec
@@ -93,7 +93,6 @@ def find_counts(labels):
     for i in range(N_REGIONS):
         counts[i] = np.sum(labels == i)
     return counts
-
 
 def show_plot(imagebw, labels, t):
     plt.figure(figsize=(5, 5))
